@@ -9,7 +9,7 @@ sudo apt update
 sudo apt upgrade
 ```
 
-### Check your Python version (it is better to use python3.10):
+### Check your Python version (it is better to use python 3.10):
 
 ```shell
 python3 --version
