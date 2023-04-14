@@ -2,7 +2,7 @@ import numpy as np
 from numba import jit
 
 @jit
-def Solver(Psi, alpha, phi, phiT, wcond, lcond, U, V, dx, yy, S1, S2,
+def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
            theta=0.49, omega1=0.99, omega2=0.99,
            motion_eq=False):
 
