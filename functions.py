@@ -25,6 +25,24 @@ def GrdGen(L, h,
         yy[ii] = yy[ii-1] + (b ** (ii - 2)) * dy
     return xx, yy
 
+def GrdGenSimpleY(L, h,
+           n = 200, k = 600,
+           a = 1, b = 1):
+    sumX = 0
+    for ii in range(n-2):
+        sumX += a ** ii
+    dx = L / sumX
+    xx = np.zeros((n), float)
+    yy = np.zeros((k), float)
+    for ii in trange(1, n, desc='dx'):
+        if (a ** (ii - 2)) * dx <= 1e-6:
+            xx[ii] = xx[ii-1] + (a ** (ii - 2)) * dx
+        elif (a ** (ii - 2)) * dx > 1e-6:
+            xx[ii] = xx[ii-1] + 1e-6
+    for ii in trange(1, k, desc='dy'):
+        yy[ii] = yy[ii-1] + 1e-4
+    return xx, yy
+
 @njit
 def quality_chek(X, X_it, key):
     accurasy = 1e-6 #1e-8
