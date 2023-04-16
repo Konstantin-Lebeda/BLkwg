@@ -43,6 +43,7 @@ Pr = vis0 * cp / lam0
 h = 0.5
 
 xx, yy = func.GrdGen(L, h, n, k, a=1.01, b=1.026)
+# xx, yy = func.GrdGenSimpleY(L, h, n, round(h/1e-4), a=1.01, b=1.026)
 
 U = np.zeros((2,k), float)
 Uit = np.zeros((k), float)
@@ -138,6 +139,14 @@ while x <= L:
         dx = xx[i+1] - xx[i]
     else:
         dx = 1e-6
+
+    # if i <= 1000:
+    #     for ii in range(1, round(h/1e-5)):
+    #         yy[ii] = yy[ii-1] + 1e-5
+    # else:
+    #     for ii in range(1, round(h/1e-4)):
+    #         yy[ii] = yy[ii-1] + 1e-4
+
     x += dx
     i += 1
 
@@ -214,7 +223,7 @@ while x <= L:
             if func.isNaN(S2[jj]):
                 func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
                 raise Exception('S2 in omega')
-        omega = Solver(omega, den, vis, visT/sigmaom, fcond, lcond, U, V, dx, yy, S1, S2, theta=0.04)
+        omega = Solver(omega, den, vis, visT/sigmaom, fcond, lcond, U, V, dx, yy, S1, S2, theta=0.01)
         for kk in range(k):
             if func.isNaN(omega[1,kk]):
                 print('Programm iterrupt at Rex = ', U[1,k-1] * x * den0 / vis0)
