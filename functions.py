@@ -75,7 +75,7 @@ def graph(Rex, Cf, Cf_analit, Cf_analit_turb):
     plt.yscale('log')
 
     plt.tight_layout()
-    # plt.show()
+    plt.show()
 
 def isNaN(num):
     return num != num

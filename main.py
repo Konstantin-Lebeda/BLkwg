@@ -1,3 +1,4 @@
+# Импорт необходимых модулей Python
 import numpy as np
 import matplotlib.pyplot as plt
 import math as mt
@@ -10,11 +11,13 @@ from tqdm import trange
 from solver import Solver
 import functions as func
 
+# Инициализация и очистка файла для мониторинга (script.py)
 fieldnames = ["Rex", "Cf", "Cf_analit", "Cf_analit_turb"]
 with open('data.csv', 'w') as csv_file:
     csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
     csv_writer.writeheader()
 
+# Начальные параметры (пока что всё в куче)
 P = 101325
 L = 5
 U0 = 10
@@ -36,15 +39,19 @@ k = 300
 Rel = den0 * U0 * L / vis0
 Pr = vis0 * cp / lam0
 
-# scale = 2
+# scale = 1
 # h = scale * max(0.37 * L / (Rel ** 0.2),
 #                 0.37 * L / (Rel ** 0.2 * Pr ** 0.6))
 
-h = 0.5
+# print(h)
 
+h = 0.4
+
+# Вызов модуля построения сетки
 xx, yy = func.GrdGen(L, h, n, k, a=1.01, b=1.026)
 # xx, yy = func.GrdGenSimpleY(L, h, n, round(h/1e-4), a=1.01, b=1.026)
 
+# Инициализация массивов заполненных нулями
 U = np.zeros((2,k), float)
 Uit = np.zeros((k), float)
 
@@ -78,6 +85,7 @@ lamit = np.zeros((k), float)
 S1 = np.zeros((k), float)
 S2 = np.zeros((k), float)
 
+# Граничные условия
 for ii in trange(k):
     den[:,ii] = float(den0)
 
@@ -105,14 +113,17 @@ for jj in range(0, k):
     Dq = 1. - np.exp(-0.022 * Ret)
     omega[0,jj] = 0.09 * Dq * den[0,jj] * ka[0,jj] / visT[0,jj]
 
-    if yy[jj] / h <= 0.3:
+    if yy[jj] / h <= 0.2:
         gamma[0,jj] = 0.
     else:
         gamma[0,jj] = 1.
+    # gamma[0,jj] = 1
 
 U[0,0] = 0.
 T[0,0] = Tw
 
+
+# Инициализация списков для хранения некоторых рассчитываемых параметров
 Rex       = []
 Cf        = []
 Cf_analit = []
@@ -125,6 +136,7 @@ i = 0
 iternum = 200
 counter = 0
 
+# Константы источниковых членов ур-ний турбулентности
 sigmaom = 2.
 Com1 = 5 / 9
 Com2 = 3 / 40
@@ -134,6 +146,7 @@ sigmagam = 0.2
 sigmak = 2.
 Cmu = 0.09
 
+# Основной цикл
 while x <= L:
     if i < n-1:
         dx = xx[i+1] - xx[i]
@@ -176,12 +189,15 @@ while x <= L:
             visTit[jj] = visT[1,jj]
 
         # Momentum equation
-        fcond = [0., 1., 0., 0.]
-        lcond = [0., 1., 0., U0]
+        fcond = [0., 1., 0., 0.] # Граничные условия на стенке
+        lcond = [0., 1., 0., U0] # Граничные условия в потоке
         for jj in range(1, k):
-            S1[jj] = 0.
-            S2[jj] = 0.
+            S1[jj] = 0. # Источниковый член
+            S2[jj] = 0. # Источниковый член
         U, V = Solver(U, den, vis, visT, fcond, lcond, U, V, dx, yy, S1, S2, theta=1, motion_eq=True)
+        # Для уточнения см. solver.py
+
+        # Проверка правильности выполнения расчёта скоростей
         for kk in range(k):
             if func.isNaN(U[1,kk]):
                 print('Programm iterrupt at Rex = ', U[1,k-1] * x * den0 / vis0)
@@ -194,6 +210,7 @@ while x <= L:
                 print('dx = ', dx)
                 func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
                 raise Exception('V = Nan')
+        # Далее формат вызова функции Solver() будет происходит аналогично.
 
         # # Energy equation
         # fcond = [0, 1, 0, T[1,0]]
@@ -207,14 +224,13 @@ while x <= L:
         #         raise Exception('T = Nan')
 
         # omega equation
-        ones = np.ones((2,k), float)
         fcond = [0., 1., 0., 6.*vis[1,0]/den[1,0]/Com2/yy[1]/yy[1]]
-        # fcond = [0, -1/(yy[1]), 1/(yy[1]), 0]
+        #fcond = [0, -1/(yy[1]), 1/(yy[1]), 0]
         lcond = [-1./(yy[k-1] - yy[k-2]), 1./(yy[k-1] - yy[k-2]), 0., 0.]
         for jj in range(1, k-1):
             dyp = yy[jj+1] - yy[jj]
             dym = yy[jj]   - yy[jj-1]
-            S = (0.5 ** 0.5) * ((dyp / dym * (U[1,jj] - U[1,jj-1]) + dym / dyp * (U[1,jj+1] - U[1,jj])) / (dym + dyp)) #(U[1,jj] - U[1,jj-1]) / (yy[jj] - yy[jj-1])
+            S = (0.5 ** 0.5) * ((dyp / dym * (U[1,jj] - U[1,jj-1]) + dym / dyp * (U[1,jj+1] - U[1,jj])) / (dym + dyp))
             S1[jj] = 2. * den[1,jj] * Com1 * S * S
             S2[jj] = - den[1,jj] * Com2 * omega[1,jj] * omega[1,jj]
             if func.isNaN(S1[jj]):
@@ -223,7 +239,7 @@ while x <= L:
             if func.isNaN(S2[jj]):
                 func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
                 raise Exception('S2 in omega')
-        omega = Solver(omega, den, vis, visT/sigmaom, fcond, lcond, U, V, dx, yy, S1, S2, theta=0.01)
+        omega = Solver(omega, den, vis, visT/sigmaom, fcond, lcond, U, V, dx, yy, S1, S2, theta=0.04)
         for kk in range(k):
             if func.isNaN(omega[1,kk]):
                 print('Programm iterrupt at Rex = ', U[1,k-1] * x * den0 / vis0)
@@ -287,7 +303,7 @@ while x <= L:
             if func.isNaN(S2[jj]):
                 func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
                 raise Exception('S2 in ka')
-        ka = Solver(ka, den, vis, visT/sigmak, fcond, lcond, U, V, dx, yy, S1, S2, theta=0.05)
+        ka = Solver(ka, den, vis, visT/sigmak, fcond, lcond, U, V, dx, yy, S1, S2, theta=1)
         for kk in range(k):
             # if ka[1,kk] < 0:
             #     ka[1,kk] = 1e-10
@@ -399,3 +415,15 @@ while x <= L:
             }
             
             csv_writer.writerow(info)
+
+    # if i % 500 == 0:
+    #     plt.subplot(1,3,1)
+    #     plt.plot(ka[0], yy)
+    #     plt.plot(ka[1], yy)
+    #     plt.subplot(1,3,2)
+    #     plt.plot(omega[0], yy)
+    #     plt.plot(omega[1], yy)
+    #     plt.subplot(1,3,3)
+    #     plt.plot(gamma[0], yy)
+    #     plt.plot(gamma[1], yy)
+    #     plt.show()
