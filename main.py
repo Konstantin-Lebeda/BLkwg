@@ -48,7 +48,7 @@ Pr = vis0 * cp / lam0
 h = 0.4
 
 # Вызов модуля построения сетки
-xx, yy = func.GrdGen(L, h, n, k, a=1.01, b=1.026)
+xx, yy = func.GrdGen(L, h, n, k, a=1.012, b=1.026)
 # xx, yy = func.GrdGenSimpleY(L, h, n, round(h/1e-4), a=1.01, b=1.026)
 
 # Инициализация массивов заполненных нулями

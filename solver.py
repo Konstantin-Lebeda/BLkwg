@@ -15,7 +15,7 @@ from numba import jit
 # theta - коэффициент релаксации (default = 0.49)
 # omega1, omega2 - коэффициенты линеаризации источниковых членов (default = 0.99)
 # motion_eq - флаг, используемый при решении ур-я движения, позволяющий совместно решить ур-е неразрывности. (default = False)
-# При решении ур-я !только! ур-я движения необходимо передать значение motion_eq=True 
+# При решении !только! ур-я движения необходимо передать значение motion_eq=True 
 
 # Функция возвращает расчитанное значение на текущем шаге искомой величины Psi, и, в случае решения уравнения движения
 # (если motion_eq=True), вторым элеменетом возращает расчитанное значение V.
@@ -28,32 +28,37 @@ def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
     first_index = 0
     last_index  = len(Psi[0])
 
-    Psi = np.float64(Psi)
-    alpha = np.float64(alpha)
-    phi = np.float64(phi)
-    phiT = np.float64(phiT)
-    fcond = np.float64(fcond)
-    lcond = np.float64(lcond)
-    U = np.float64(U)
-    V = np.float64(V)
-    dx = np.float64(dx)
-    yy = np.float64(yy)
-    S1 = np.float64(S1)
-    S2 = np.float64(S2)
-    theta = np.float64(theta)
-    omega1 = np.float64(omega1)
-    omega2 = np.float64(omega2)
+    # Повторное уточнение типа данных принятых массивов и переменных
+    # (необходимо для корректной работы jit, не изменяет сами массивы)
+    Psi = np.double(Psi)
+    alpha = np.double(alpha)
+    phi = np.double(phi)
+    phiT = np.double(phiT)
+    fcond = np.double(fcond)
+    lcond = np.double(lcond)
+    U = np.double(U)
+    V = np.double(V)
+    dx = np.double(dx)
+    yy = np.double(yy)
+    S1 = np.double(S1)
+    S2 = np.double(S2)
+    theta = np.double(theta)
+    omega1 = np.double(omega1)
+    omega2 = np.double(omega2)
 
+    # Инициализация массивов
     a = np.zeros(last_index, float)
     b = np.zeros(last_index, float)
     c = np.zeros(last_index, float)
     d = np.zeros(last_index, float)
 
+    # Граничные условия на стенке
     a[0] = fcond[0]
     b[0] = fcond[1]
     c[0] = fcond[2]
     d[0] = fcond[3]
 
+    # Ур-я, зашитые в коэффициенты трёхдиагональной матрицы описаны в Module solver.odt
     for jj in range(first_index+1, last_index-1):
         dyp = yy[jj+1] - yy[jj]
         dym = yy[jj]   - yy[jj-1]
@@ -79,11 +84,13 @@ def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
                     omega1 * S1[jj] +\
                     omega2 * S2[jj]
 
+    # Граничные условия в потоке
     a[last_index-1] = lcond[0]
     b[last_index-1] = lcond[1]
     c[last_index-1] = lcond[2]
     d[last_index-1] = lcond[3]
 
+    # TDMA
     for jj in range(first_index+1, last_index):
         b[jj] -= a[jj] * c[jj-1] / (b[jj-1] + 1e-32)
         d[jj] -= a[jj] * d[jj-1] / (b[jj-1] + 1e-32)
@@ -97,9 +104,11 @@ def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
         c[jj] = 0.
         b[jj] = 1.
 
+    # Присвоение решения TDMA массиву исходной величины
     for jj in range(first_index, last_index):
         Psi[1,jj] = d[jj]
 
+    # Ур-е неразрывности
     if motion_eq:
         for jj in range(first_index+1, last_index):
             dym = yy[jj]-yy[jj-1]

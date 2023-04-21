@@ -19,8 +19,8 @@ def GrdGen(L, h,
     for ii in trange(1, n, desc='dx'):
         if (a ** (ii - 2)) * dx <= 1e-6:
             xx[ii] = xx[ii-1] + (a ** (ii - 2)) * dx
-        elif (a ** (ii - 2)) * dx > 1e-6:
-            xx[ii] = xx[ii-1] + 1e-6
+        elif (a ** (ii - 2)) * dx > 8e-7:
+            xx[ii] = xx[ii-1] + 8e-7
     for ii in trange(1, k, desc='dy'):
         yy[ii] = yy[ii-1] + (b ** (ii - 2)) * dy
     return xx, yy
