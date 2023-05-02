@@ -12,7 +12,7 @@ from numba import jit
 # dx - текущий шаг по х
 # уу - массив значений у в каждом элементе сетки
 # S1, S2 - источниковые члены
-# theta - коэффициент релаксации (default = 0.49)
+# theta - параметр явно-неявной схемы дискретизации
 # omega1, omega2 - коэффициенты линеаризации источниковых членов (default = 0.99)
 # motion_eq - флаг, используемый при решении ур-я движения, позволяющий совместно решить ур-е неразрывности. (default = False)
 # При решении !только! ур-я движения необходимо передать значение motion_eq=True 
@@ -104,7 +104,7 @@ def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
         c[jj] = 0.
         b[jj] = 1.
 
-    # Присвоение решения TDMA массиву исходной величины
+    # Присвоение решения TDMA массиву исходной величины с учётом релаксации
     for jj in range(first_index, last_index):
         Psi[1,jj] = d[jj]
 
@@ -116,7 +116,7 @@ def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
             V[1,jj] = 1. / alpha[1,jj] * (- dym / 2. / dx * \
                         (alpha[1,jj]   * Psi[1,jj]   - alpha[0,jj]   * Psi[0,jj]    + \
                          alpha[1,jj-1] * Psi[1,jj-1] - alpha[0,jj-1] * Psi[0,jj-1]) + alpha[1,jj-1] * V[1,jj-1])
-
+            
         return Psi, V
 
     else:
