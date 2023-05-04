@@ -17,10 +17,10 @@ def GrdGen(L, h,
     xx = np.zeros((n), float)
     yy = np.zeros((k), float)
     for ii in trange(1, n, desc='dx'):
-        if (a ** (ii - 2)) * dx <= 1e-6:
+        if (a ** (ii - 2)) * dx <= 1.5e-6:
             xx[ii] = xx[ii-1] + (a ** (ii - 2)) * dx
-        elif (a ** (ii - 2)) * dx > 8e-7:
-            xx[ii] = xx[ii-1] + 8e-7
+        elif (a ** (ii - 2)) * dx > 1.5e-6:
+            xx[ii] = xx[ii-1] + 1.5e-6
     for ii in trange(1, k, desc='dy'):
         yy[ii] = yy[ii-1] + (b ** (ii - 2)) * dy
     return xx, yy
@@ -45,7 +45,7 @@ def GrdGenSimpleY(L, h,
 
 @njit
 def quality_chek(X, X_it, key):
-    accurasy = 1e-6 #1e-8
+    accurasy = 1e-5 #1e-8
     for j in range(len(X_it)):
             delta = np.abs(X_it[j] - X[1,j]) / (X[1,j] + 10e-10)
             if (delta > accurasy):
