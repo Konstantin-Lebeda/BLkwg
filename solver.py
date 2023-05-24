@@ -113,9 +113,12 @@ def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
         for jj in range(first_index+1, last_index):
             dym = yy[jj]-yy[jj-1]
 
-            V[1,jj] = 1. / alpha[1,jj] * (- dym / 2. / dx * \
-                        (alpha[1,jj]   * Psi[1,jj]   - alpha[0,jj]   * Psi[0,jj]    + \
-                         alpha[1,jj-1] * Psi[1,jj-1] - alpha[0,jj-1] * Psi[0,jj-1]) + alpha[1,jj-1] * V[1,jj-1])
+            # V[1,jj] = 1. / alpha[1,jj] * (- dym / 2. / dx * \
+            #             (alpha[1,jj]   * Psi[1,jj]   - alpha[0,jj]   * Psi[0,jj]    + \
+            #              alpha[1,jj-1] * Psi[1,jj-1] - alpha[0,jj-1] * Psi[0,jj-1]) + alpha[1,jj-1] * V[1,jj-1])
+
+            V[1,jj] = - (0.5 * (Psi[1,jj]   - Psi[0,jj])   / dx + \
+                         0.5 * (Psi[1,jj-1] - Psi[0,jj-1]) / dx) * dym + V[1,jj-1]
             
         return Psi, V
 
