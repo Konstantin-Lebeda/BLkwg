@@ -1,6 +1,6 @@
 import numpy as np
 
-from numba import jit
+from numba import jit, njit
 
 # Функция Solver() принимает на вход следующие параметры:
 # Psi - переменная, относительно которой решается уравнение (искомая величина)
@@ -24,10 +24,6 @@ from numba import jit
 def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
            theta=0.49, omega1=0.99, omega2=0.99,
            motion_eq=False):
-
-    first_index = 0
-    last_index  = len(Psi[0])
-
     # Повторное уточнение типа данных принятых массивов и переменных
     # (необходимо для корректной работы jit, не изменяет сами массивы)
     Psi = np.double(Psi)
@@ -46,11 +42,14 @@ def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
     omega1 = np.double(omega1)
     omega2 = np.double(omega2)
 
+    first_index = 0
+    last_index  = int(len(Psi[0]))
+
     # Инициализация массивов
-    a = np.zeros(last_index, float)
-    b = np.zeros(last_index, float)
-    c = np.zeros(last_index, float)
-    d = np.zeros(last_index, float)
+    a = np.zeros((last_index), float)
+    b = np.zeros((last_index), float)
+    c = np.zeros((last_index), float)
+    d = np.zeros((last_index), float)
 
     # Граничные условия на стенке
     a[0] = fcond[0]
@@ -104,7 +103,7 @@ def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
         c[jj] = 0.
         b[jj] = 1.
 
-    # Присвоение решения TDMA массиву исходной величины с учётом релаксации
+    # Присвоение решения TDMA массиву исходной величины
     for jj in range(first_index, last_index):
         Psi[1,jj] = d[jj]
 
