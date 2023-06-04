@@ -1,4 +1,4 @@
-# Импорт необходимых модулей Python
+# Импорт необходимых библиотек
 import numpy as np
 import matplotlib.pyplot as plt
 import math as mt
@@ -11,47 +11,31 @@ from tqdm import trange
 from solver import Solver
 import functions as func
 
-# Инициализация и очистка файла для мониторинга (script.py)
-fieldnames = ["Rex", "Cf", "Cf_analit", "Cf_analit_turb"]
-with open('data.csv', 'w') as csv_file:
-    csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-    csv_writer.writeheader()
-
-# Начальные параметры (пока что всё в куче)
-P = 101325
-L = 5
-U0 = 10
-T0 = 300
-Tw = 300
-
+# Начальные условия среды
+P = 101325.
+U0 = 25.
+T0 = 300.
+Tw = 301.
 PrT = 0.9
 
-properties0 = func.AirProp(T0, T0, P)
-
+properties0 = func.AirProp(T0, T0, P) # Расчёт вектора начальных свойств
 den0 = properties0[0]
 vis0 = properties0[1]
 lam0 = properties0[2]
 cp = properties0[3]
 
-n = 2000
-k = 300
-
-Rel = den0 * U0 * L / vis0
-Pr = vis0 * cp / lam0
-
-# scale = 1
-# h = scale * max(0.37 * L / (Rel ** 0.2),
-#                 0.37 * L / (Rel ** 0.2 * Pr ** 0.6))
-
-# print(h)
-
+# Геометрия и параметры сетки
+L = 5.
 h = 0.4
+n = 2000
+k = 500
 
-# Вызов модуля построения сетки
-xx, yy = func.GrdGen(L, h, n, k, a=1.012, b=1.026)
-# xx, yy = func.GrdGenSimpleY(L, h, n, round(h/1e-4), a=1.01, b=1.026)
+# По х сетка строится таким образом, чтобы за указанное число элементов
+# (n) выйти на фиксированные шаг (в данном случае 5е-7).
+# Сетка по у генерируется стандартным способом по кол-ву элементов и степени
+# сжатия к нижней стенке
+xx, yy = func.GrdGen(L, h, n, k, a=1.01, b=1.023)
 
-# Инициализация массивов заполненных нулями
 U = np.zeros((2,k), float)
 Uit = np.zeros((k), float)
 
@@ -85,55 +69,43 @@ lamit = np.zeros((k), float)
 S1 = np.zeros((k), float)
 S2 = np.zeros((k), float)
 
-# Граничные условия
-for ii in trange(k):
-    den[:,ii] = float(den0)
+den[:,:] = float(den0)
 
-for ii in trange(k):
-    vis[:,ii] = float(vis0)
+vis[:,:] = float(vis0)
 
-for ii in trange(k):
-    visT[:,ii] = 10 * vis[:,ii]
+visT[:,:] = 100 * vis[:,:]
 
-for ii in trange(k):
-    lam[:,ii] = float(lam0)
+lam[:,:] = float(lam0)
 
 Tu = 0.065
 
-x0 = 1e-10
 
-for jj in range(0, k):
-    U[0,jj]            = U0 #mt.erf(0.313 * yy[jj] * np.sqrt(den0 * U0 / vis0 / x0))
-    V[0,jj]            = 0.
-    T[0,jj]            = T0
-    # ka[0,jj] = 1e-5
-    # omega[0,jj] = 1e-5
-    ka[0,jj] = 1.5 * U0 * Tu * Tu
-    Ret = den[0,jj] / vis[0,jj] * ((ka[0,jj]) ** 0.5) * yy[jj]
-    Dq = 1. - np.exp(-0.022 * Ret)
-    omega[0,jj] = 0.09 * Dq * den[0,jj] * ka[0,jj] / visT[0,jj]
-
-    if yy[jj] / h <= 0.2:
-        gamma[0,jj] = 0.
-    else:
-        gamma[0,jj] = 1.
-    # gamma[0,jj] = 1
+U[0,:] = U0
+V[0,:] = 0.
+T[0,:] = T0
 
 U[0,0] = 0.
 T[0,0] = Tw
 
+
+ka[0,:] = 1.5 * U0 * Tu * Tu
+omega[0,:] = 0.09 * (1. - np.exp(-0.022 * (den[0,:] / vis[0,:] * ((ka[0,:]) ** 0.5) * yy[:]))) * den[0,:] * ka[0,:] / visT[0,:]
+
+for jj in range(k):
+    if yy[jj] / h <= 0.3:
+        gamma[0,jj] = 0.
+    else:
+        gamma[0,jj] = 1.
 
 # Инициализация списков для хранения некоторых рассчитываемых параметров
 Rex       = []
 Cf        = []
 Cf_analit = []
 Cf_analit_turb = []
-# Nu        = []
-# Nu_analit = []
 
-x = 0
+x = 0.
 i = 0
-iternum = 200
+iternum = 1000
 counter = 0
 
 # Константы источниковых членов ур-ний турбулентности
@@ -146,70 +118,74 @@ sigmagam = 0.2
 sigmak = 2.
 Cmu = 0.09
 
-# Основной цикл
-while x <= L:
+# Инициализация и очистка файла для мониторинга (script.py)
+fieldnames = ["Rex", "Cf", "Cf_analit", "Cf_analit_turb"]
+with open('data.csv', 'w') as csv_file:
+    csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+    csv_writer.writeheader()
+
+Ures = open('res/U.txt', 'w')
+Vres = open('res/V.txt', 'w')
+kares = open('res/ka.txt', 'w')
+wres = open('res/w.txt', 'w')
+gres = open('res/g.txt', 'w')
+
+ypres = open('res/yp.txt', 'w')
+kapres = open('res/kap.txt', 'w')
+epspres = open('res/epsp.txt', 'w')
+
+while x <=L:
     if i < n-1:
         dx = xx[i+1] - xx[i]
     else:
-        dx = 1e-6
+        dx = 5e-8
+    # До определённого момента (i < n-1) сетка посчитана с плавным
+    # переходом на постоянный шаг.
+    # Далее шаг всегда постоянный
 
-    # if i <= 1000:
-    #     for ii in range(1, round(h/1e-5)):
-    #         yy[ii] = yy[ii-1] + 1e-5
-    # else:
-    #     for ii in range(1, round(h/1e-4)):
-    #         yy[ii] = yy[ii-1] + 1e-4
+    x += dx # Текущее значение
+    i += 1 # Счётчик для расчёта dx
 
-    x += dx
-    i += 1
+    start = time.time() # Для оценки времени расчёта одного шага
 
-    start = time.time()
+    # Перенос значений с предыдущего шага на текущий
+    U[1,:] = U[0,:]
+    V[1,:] = V[0,:]
+    T[1,:] = T[0,:]
+    ka[1,:] = ka[0,:]
+    omega[1,:] = omega[0,:]
+    gamma[1,:] = gamma[0,:]
+    den[1,:] = den[0,:]
+    vis[1,:] = vis[0,:]
+    visT[1,:] = visT[0,:]
 
-    for jj in range(k):
-        U[1,jj] = U[0,jj]
-        V[1,jj] = V[0,jj]
-        T[1,jj] = T[0,jj]
-        ka[1,jj] = ka[0,jj]
-        omega[1,jj] = omega[0,jj]
-        gamma[1,jj] = gamma[0,jj]
-        den[1,jj] = den[0,jj]
-        vis[1,jj] = vis[0,jj]
-        visT[1,jj] = visT[0,jj]
-
+    # Цикл расчёта текущего шага
     for q in range(iternum):
-        for jj in range(k):
-            Uit[jj] = U[1,jj]
-            Vit[jj] = V[1,jj]
-            Tit[jj] = T[1,jj]
-            kait[jj] = ka[1,jj]
-            omegait[jj] = omega[1,jj]
-            gammait[jj] = gamma[1,jj]
-            denit[jj] = den[1,jj]
-            visit[jj] = vis[1,jj]
-            visTit[jj] = visT[1,jj]
+        # Формирование массивов для проверки сходимости
+        Uit[:] = U[1,:]
+        Vit[:] = V[1,:]
+        Tit[:] = T[1,:]
+        kait[:] = ka[1,:]
+        omegait[:] = omega[1,:]
+        gammait[:] = gamma[1,:]
+        denit[:] = den[1,:]
+        visit[:] = vis[1,:]
+        visTit[:] = visT[1,:]
 
         # Momentum equation
-        fcond = [0., 1., 0., 0.] # Граничные условия на стенке
-        lcond = [0., 1., 0., U0] # Граничные условия в потоке
+        fcond = np.array([0., 1., 0., 0.], float) # Граничные условия на стенке
+        lcond = np.array([0., 1., 0., U0], float) # Граничные условия в потоке
+        S1[1:] = 0. # Источниковый член
+        S2[1:] = 0. # Источниковый член
+        U = Solver(np.array(U, float), den, vis, visT, fcond, lcond, np.array(U, float), np.array(V, float), dx, yy, S1, S2, theta=1)
         for jj in range(1, k):
-            S1[jj] = 0. # Источниковый член
-            S2[jj] = 0. # Источниковый член
-        U, V = Solver(U, den, vis, visT, fcond, lcond, U, V, dx, yy, S1, S2, theta=1, motion_eq=True)
+            dym = yy[jj]-yy[jj-1]
+            V[1,jj] = - (0.5 * (U[1,jj]   - U[0,jj])   / dx + \
+                         0.5 * (U[1,jj-1] - U[0,jj-1]) / dx) * dym + V[1,jj-1]
+        V[1,:] = 0.5 * V[1,:] + 0.5 * Vit[:]
+        U = np.array(U, float)
+        V = np.array(V, float)
         # Для уточнения см. solver.py
-
-        # Проверка правильности выполнения расчёта скоростей
-        for kk in range(k):
-            if func.isNaN(U[1,kk]):
-                print('Programm iterrupt at Rex = ', U[1,k-1] * x * den0 / vis0)
-                print('dx = ', dx)
-                func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('U = Nan')
-        for kk in range(k):
-            if func.isNaN(V[1,kk]):
-                print('Programm iterrupt at Rex = ', U[1,k-1] * x * den0 / vis0)
-                print('dx = ', dx)
-                func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('V = Nan')
         # Далее формат вызова функции Solver() будет происходит аналогично.
 
         # # Energy equation
@@ -220,39 +196,27 @@ while x <= L:
         #     S2[jj] = 0
         # T = Solver(T, cp*den, lam, cp*visT/PrT, fcond, lcond, U, V, dx, yy, S1, S2)
         # for kk in range(len(T[1])):
-        #     if isNaN(T[1,kk]):
-        #         raise Exception('T = Nan')
+        #     if isNaN(T[1,kk]):ka
 
         # omega equation
-        fcond = [0., 1., 0., 6.*vis[1,0]/den[1,0]/Com2/yy[1]/yy[1]]
-        #fcond = [0, -1/(yy[1]), 1/(yy[1]), 0]
-        lcond = [-1./(yy[k-1] - yy[k-2]), 1./(yy[k-1] - yy[k-2]), 0., 0.]
+        fcond = np.array([0., 1., 0., 6.*vis[1,1]/den[1,1]/Com2/yy[1]/yy[1]], float)
+        lcond = np.array([-1./(yy[k-1] - yy[k-2]), 1./(yy[k-1] - yy[k-2]), 0., 0.], float)
         for jj in range(1, k-1):
             dyp = yy[jj+1] - yy[jj]
             dym = yy[jj]   - yy[jj-1]
             S = (0.5 ** 0.5) * ((dyp / dym * (U[1,jj] - U[1,jj-1]) + dym / dyp * (U[1,jj+1] - U[1,jj])) / (dym + dyp))
             S1[jj] = 2. * den[1,jj] * Com1 * S * S
             S2[jj] = - den[1,jj] * Com2 * omega[1,jj] * omega[1,jj]
-            if func.isNaN(S1[jj]):
-                func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('S1 in omega')
-            if func.isNaN(S2[jj]):
-                func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('S2 in omega')
-        omega = Solver(omega, den, vis, visT/sigmaom, fcond, lcond, U, V, dx, yy, S1, S2, theta=0.04)
-        for kk in range(k):
-            if func.isNaN(omega[1,kk]):
-                print('Programm iterrupt at Rex = ', U[1,k-1] * x * den0 / vis0)
-                print('dx = ', dx)
-                func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('omega = Nan')
+        omega = Solver(np.array(omega, float), den, vis, visT/sigmaom, fcond, lcond, U, V, dx, yy, S1, S2, theta=1)
+        relax = 0.04
+        omega[1,:] = relax * omega[1,:] + (1. - relax) * omegait[:]
 
         #gamma equation
-        fcond = [0., -1./yy[1], 1./yy[1], 0.]
-        lcond = [0., 1., 0., 1.]
+        fcond = np.array([0., -1./yy[1], 1./yy[1], 0.], float)
+        lcond = np.array([0., 1., 0., 1.], float)
         for jj in range(1, k-1):
             Rt = visT[1,jj] / vis[1,jj]
-            Vort = np.abs((U[1,jj] - U[1,jj-1]) / (yy[jj] - yy[jj-1]))
+            Vort = np.abs((dyp / dym * (U[1,jj] - U[1,jj-1]) + dym / dyp * (U[1,jj+1] - U[1,jj])) / (dym + dyp))
             Tom = Rt * Vort / omega[1,jj]
             Rc = 400. - 360. * min(Tom / 2., 1.)
             Rnu = den[1,jj] * yy[jj] * yy[jj] * Vort / 2.188 / vis[1,jj]
@@ -260,58 +224,38 @@ while x <= L:
                 Fgam = 0
             if (Rnu > Rc + 4.) and (Rnu <= 100./0.7 - 1):
                 Fgam = 8.
-            # Fgam = 2. * max(0., min(200. - Rnu, 1.)) * min(max(Rnu - Rc, 0.), 4.)
             Pgam = Fgam * Vort * (gammamax - gamma[1,jj]) * gamma[1,jj] ** 0.5
             Fturb = np.exp(-((Rnu * Rt) ** 1.2))
             if (Rnu <= 18.) or (Rnu >= 100.):
                 Ggam = 0.
             if (Rnu > 19.) and (Rnu <= 99.):
                 Ggam = 7.5
-            # Ggam = 7.5 * max(0, min(100. - Rnu, 1.)) * min(max(Rnu - 18., 0.), 1.)
-            Egam = Ggam * Fturb * Vort * gamma[1,jj] ** 1.5
+            Egam = Ggam * Fturb * Vort * (gamma[1,jj]) ** 1.5
             S1[jj] = den[1,jj] * (Pgam - Egam)
             S2[jj] = 0.
-            if func.isNaN(S1[jj]):
-                #graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('S1 in gamma')
-            if func.isNaN(S2[jj]):
-                #graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('S2 in gamma')
-        gamma = Solver(gamma, den, vis/sigmal, visT/sigmagam, fcond, lcond, U, V, dx, yy, S1, S2, theta=0.5)
+        gamma = Solver(np.array(gamma, float), den, vis/sigmal, visT/sigmagam, fcond, lcond, U, V, dx, yy, S1, S2, theta=1)
         for kk in range(k):
             if gamma[1,kk] < 0:
                 gamma[1,kk] = 0.
             gamma[1,kk] = min(gamma[1,kk], 1.)
-        for kk in range(k):
-            if func.isNaN(gamma[1,kk]):
-                func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('gamma = Nan')
-
+        relax = 0.5
+        gamma[1,:] = relax * gamma[1,:] + (1. - relax) * gammait[:]
+        
+            
         # ka equation
-        fcond = [0., 1., 0., 0.]
-        lcond = [-1./(yy[k-1] - yy[k-2]), 1./(yy[k-1] - yy[k-2]), 0., 0.]
+        fcond = np.array([0., 1., 0., 0.], float)
+        lcond = np.array([-1./(yy[k-1] - yy[k-2]), 1./(yy[k-1] - yy[k-2]), 0., 0.], float)
         for jj in range(1, k-1):
             dyp = yy[jj+1] - yy[jj]
             dym = yy[jj]   - yy[jj-1]
             S = (0.5 ** 0.5) * ((dyp / dym * (U[1,jj] - U[1,jj-1]) + dym / dyp * (U[1,jj+1] - U[1,jj])) / (dym + dyp))
             Pk = gamma[1,jj] * min(2. * visT[1,jj] * S * S / den[1,jj], ka[1,jj] * np.abs(S) / (3. ** 0.5))
             S1[jj] = den[1,jj] * Pk
-            S2[jj] = - Cmu * den[1,jj] * ka[1,jj] * omega[1,jj]
-            if func.isNaN(S1[jj]):
-                func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('S1 in ka')
-            if func.isNaN(S2[jj]):
-                func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('S2 in ka')
-        ka = Solver(ka, den, vis, visT/sigmak, fcond, lcond, U, V, dx, yy, S1, S2, theta=1)
-        for kk in range(k):
-            # if ka[1,kk] < 0:
-            #     ka[1,kk] = 1e-10
-            if func.isNaN(ka[1,kk]):
-                print('Programm iterrupt at Rex = ', U[1,k-1] * x * den0 / vis0)
-                print('dx = ', dx)
-                func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('ka = Nan')
+            S2[jj] = - Cmu * den[1,jj] * ka[1,jj] * omega[1,jj] #0.
+        ka = Solver(np.array(ka, float), den, vis, visT/sigmak, fcond, lcond, U, V, dx, yy, S1, S2, theta=1)
+        relax = 0.05
+        ka[1,:] = relax * ka[1,:] + (1. - relax) * kait[:]
+
 
         for jj in range(k):
             den[1,jj] = func.AirProp(T[1,jj], T0, P)[0]
@@ -319,27 +263,7 @@ while x <= L:
         for jj in range(k):
             vis[1,jj] = func.AirProp(T[1,jj], T0, P)[1]
 
-        for jj in range(k):
-            visT[1,jj] = den[1,jj] * ka[1,jj] / omega[1,jj]
-            if visT[1,jj] < 0:
-                print('visT < 0')
-                print('ka, omega = ', ka[1,jj], omega[1,jj])
-                plt.subplot(1,3,1)
-                plt.plot(ka[0], yy)
-                plt.plot(ka[1], yy)
-                plt.subplot(1,3,2)
-                plt.plot(omega[0], yy)
-                plt.plot(omega[1], yy)
-                plt.subplot(1,3,3)
-                plt.plot(gamma[0], yy)
-                plt.plot(gamma[1], yy)
-                plt.show()
-                raise Exception('VisT < 0')
-                visT[1,jj] = 0
-            if func.isNaN(visT[1,jj]):
-                print('ka, omega = ', ka[1,jj], omega[1,jj])
-                func.graph(Rex, Cf, Cf_analit, Cf_analit_turb)
-                raise Exception('VisT takes NaN')
+        visT[1,:] = den[1,:] * ka[1,:] / omega[1,:]
 
         key1 = 0
         key1 = func.quality_chek(U, Uit, key1)
@@ -377,33 +301,53 @@ while x <= L:
                       and key8 == 0 and key9 == 0):
             break
 
-    for jj in range(k):
-        U[0,jj] = U[1,jj]
-        V[0,jj] = V[1,jj]
-        T[0,jj] = T[1,jj]
-        ka[0,jj] = ka[1,jj]
-        omega[0,jj] = omega[1,jj]
-        gamma[0,jj] = gamma[1,jj]
-        den[0,jj] = den[1,jj]
-        vis[0,jj] = vis[1,jj]
-        visT[0,jj] = visT[1,jj]
+    # Перенос значений с текущего шага на предыдущий
+    U[0,:] = U[1,:]
+    V[0,:] = V[1,:]
+    T[0,:] = T[1,:]
+    ka[0,:] = ka[1,:]
+    omega[0,:] = omega[1,:]
+    gamma[0,:] = gamma[1,:]
+    den[0,:] = den[1,:]
+    vis[0,:] = vis[1,:]
+    visT[0,:] = visT[1,:]
 
     end = time.time()
 
-    if q >= iternum * 0.75:
-        counter += 1
-
+    # Вывод некоторых параметров в консоль
     # if i % 50 == 0:
-    print('|', 'step:', i, '; x:', round(x, 3), '; Re:', round(U[1,k-1] * x * den0 / vis0), '; step time:', round((end - start)*1000), 'ms', '; iter:', q, '; dx: ', dx, '; errors:', counter, '; progress', round(x * 100 / L, 3), '% |')
+    print('|', 'step:', i, '; x:', round(x, 3), '; Re:', round(U[1,k-1] * x * den0 / vis0), '; mSPI:', round((end - start)*1000 / q), '; iter:', q, '; dx: ', dx, '; progress', round(x * 100 / L, 3), '% |')
+    
+    if i % 5000 == 0:
+        for jj in range(k):
+            UU = U[1,jj]
+            VV = V[1,jj]
+            kaka = ka[1,jj]
+            ww = omega[1,jj]
+            gg = gamma[1,jj]
+            Ures.write(str(UU))
+            Ures.write(', ')
+            Vres.write(str(VV))
+            Vres.write(', ')
+            kares.write(str(kaka))
+            kares.write(', ')
+            wres.write(str(ww))
+            wres.write(', ')
+            gres.write(str(gg))
+            gres.write(', ')
+        Ures.write('\n')
+        Vres.write('\n')
+        kares.write('\n')
+        wres.write('\n')
+        gres.write('\n')
 
     Rex.append(U[1,k-1] * x * den0 / vis0)
     Cf.append(vis0 * ((U[1,1] - U[1,0]) / (yy[1] - yy[0]))/(den0 * U[1,k-1] * U[1,k-1]))
     Cf_analit.append(0.332/np.sqrt(U[1,k-1] * x * den0 / vis0))
     Cf_analit_turb.append(0.0296 * (U[1,k-1] * x * den0 / vis0) ** (-0.2))
-    # Nu.append(-lam0 * x * ((T[1,1] - T[1,0]) / (yy[1] - yy[0])) / ((Tw - T[1,k-1]) * lam0))
-    # Nu_analit.append(0.332 * (U[1,k-1] * x * den0 / vis0)**(0.5) * Pr**(0.333))
 
-    if i % 10 == 0:
+    # Запись в файл параметров для мониторинга (script.py)
+    if i == 1:
         with open('data.csv', 'a') as csv_file:
             csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
 
@@ -416,14 +360,38 @@ while x <= L:
             
             csv_writer.writerow(info)
 
-    # if i % 500 == 0:
-    #     plt.subplot(1,3,1)
-    #     plt.plot(ka[0], yy)
-    #     plt.plot(ka[1], yy)
-    #     plt.subplot(1,3,2)
-    #     plt.plot(omega[0], yy)
-    #     plt.plot(omega[1], yy)
-    #     plt.subplot(1,3,3)
-    #     plt.plot(gamma[0], yy)
-    #     plt.plot(gamma[1], yy)
-    #     plt.show()
+    if i % 100 == 0:
+        with open('data.csv', 'a') as csv_file:
+            csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+
+            info = {
+                "Rex": (U[1,k-1] * x * den0 / vis0),
+                "Cf": (vis0 * ((U[1,1] - U[1,0]) / (yy[1] - yy[0]))/(den0 * U[1,k-1] * U[1,k-1])),
+                "Cf_analit": (0.332/np.sqrt(U[1,k-1] * x * den0 / vis0)),
+                "Cf_analit_turb": (0.0296 * (U[1,k-1] * x * den0 / vis0) ** (-0.2)),
+            }
+            
+            csv_writer.writerow(info)
+
+
+for jj in range(k):
+    UU = U[1,jj]
+    VV = V[1,jj]
+    kaka = ka[1,jj]
+    ww = omega[1,jj]
+    gg = gamma[1,jj]
+    Ures.write(str(UU))
+    Ures.write(', ')
+    Vres.write(str(VV))
+    Vres.write(', ')
+    kares.write(str(kaka))
+    kares.write(', ')
+    wres.write(str(ww))
+    wres.write(', ')
+    gres.write(str(gg))
+    gres.write(', ')
+Ures.write('\n')
+Vres.write('\n')
+kares.write('\n')
+wres.write('\n')
+gres.write('\n')

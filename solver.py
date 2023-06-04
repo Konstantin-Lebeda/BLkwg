@@ -1,6 +1,5 @@
 import numpy as np
-
-from numba import jit, njit
+from numba import njit
 
 # Функция Solver() принимает на вход следующие параметры:
 # Psi - переменная, относительно которой решается уравнение (искомая величина)
@@ -13,37 +12,17 @@ from numba import jit, njit
 # уу - массив значений у в каждом элементе сетки
 # S1, S2 - источниковые члены
 # theta - параметр явно-неявной схемы дискретизации
-# omega1, omega2 - коэффициенты линеаризации источниковых членов (default = 0.99)
-# motion_eq - флаг, используемый при решении ур-я движения, позволяющий совместно решить ур-е неразрывности. (default = False)
-# При решении !только! ур-я движения необходимо передать значение motion_eq=True 
+# omega1, omega2 - коэффициенты линеаризации источниковых членов (default = 0.99) 
 
-# Функция возвращает расчитанное значение на текущем шаге искомой величины Psi, и, в случае решения уравнения движения
-# (если motion_eq=True), вторым элеменетом возращает расчитанное значение V.
+# Функция возвращает расчитанное значение на текущем шаге искомой величины Psi
 
-@jit
+@njit
 def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
-           theta=0.49, omega1=0.99, omega2=0.99,
-           motion_eq=False):
+           theta=0.49, omega1=0.99, omega2=0.99):
     # Повторное уточнение типа данных принятых массивов и переменных
     # (необходимо для корректной работы jit, не изменяет сами массивы)
-    Psi = np.double(Psi)
-    alpha = np.double(alpha)
-    phi = np.double(phi)
-    phiT = np.double(phiT)
-    fcond = np.double(fcond)
-    lcond = np.double(lcond)
-    U = np.double(U)
-    V = np.double(V)
-    dx = np.double(dx)
-    yy = np.double(yy)
-    S1 = np.double(S1)
-    S2 = np.double(S2)
-    theta = np.double(theta)
-    omega1 = np.double(omega1)
-    omega2 = np.double(omega2)
-
     first_index = 0
-    last_index  = int(len(Psi[0]))
+    last_index  = len(Psi[0])
 
     # Инициализация массивов
     a = np.zeros((last_index), float)
@@ -104,22 +83,6 @@ def Solver(Psi, alpha, phi, phiT, fcond, lcond, U, V, dx, yy, S1, S2,
         b[jj] = 1.
 
     # Присвоение решения TDMA массиву исходной величины
-    for jj in range(first_index, last_index):
-        Psi[1,jj] = d[jj]
+    Psi[1,:] = d[:]
 
-    # Ур-е неразрывности
-    if motion_eq:
-        for jj in range(first_index+1, last_index):
-            dym = yy[jj]-yy[jj-1]
-
-            # V[1,jj] = 1. / alpha[1,jj] * (- dym / 2. / dx * \
-            #             (alpha[1,jj]   * Psi[1,jj]   - alpha[0,jj]   * Psi[0,jj]    + \
-            #              alpha[1,jj-1] * Psi[1,jj-1] - alpha[0,jj-1] * Psi[0,jj-1]) + alpha[1,jj-1] * V[1,jj-1])
-
-            V[1,jj] = - (0.5 * (Psi[1,jj]   - Psi[0,jj])   / dx + \
-                         0.5 * (Psi[1,jj-1] - Psi[0,jj-1]) / dx) * dym + V[1,jj-1]
-            
-        return Psi, V
-
-    else:
-        return Psi
+    return Psi

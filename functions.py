@@ -17,10 +17,10 @@ def GrdGen(L, h,
     xx = np.zeros((n), float)
     yy = np.zeros((k), float)
     for ii in trange(1, n, desc='dx'):
-        if (a ** (ii - 2)) * dx <= 1.5e-6:
+        if (a ** (ii - 2)) * dx <= 5e-8:
             xx[ii] = xx[ii-1] + (a ** (ii - 2)) * dx
-        elif (a ** (ii - 2)) * dx > 1.5e-6:
-            xx[ii] = xx[ii-1] + 1.5e-6
+        elif (a ** (ii - 2)) * dx > 5e-8:
+            xx[ii] = xx[ii-1] + 5e-8
     for ii in trange(1, k, desc='dy'):
         yy[ii] = yy[ii-1] + (b ** (ii - 2)) * dy
     return xx, yy
@@ -58,10 +58,7 @@ def AirProp(T, T0, P):
     lam = 0.026
     R = 8.314e3 / 29
     cp = 1005
-    try:
-        den = P / R / T
-    except ZeroDivisionError:
-        raise Exception('Division by zero')
+    den = P / R / (T + 10e-10)
     vis = vis0 * (T / (T0 + 1e-10)) ** 75e-2
     return [den, vis, lam, cp]
 
