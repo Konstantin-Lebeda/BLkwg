@@ -29,12 +29,13 @@ L = 5.
 h = 0.4
 n = 2000
 k = 500
+maxdx = 5.e-7
 
 # По х сетка строится таким образом, чтобы за указанное число элементов
 # (n) выйти на фиксированные шаг (в данном случае 5е-7).
 # Сетка по у генерируется стандартным способом по кол-ву элементов и степени
 # сжатия к нижней стенке
-xx, yy = func.GrdGen(L, h, n, k, a=1.01, b=1.023)
+xx, yy = func.GrdGen(L, h, maxdx, n, k, a=1.01, b=1.023)
 
 U = np.zeros((2,k), float)
 Uit = np.zeros((k), float)
@@ -138,7 +139,7 @@ while x <=L:
     if i < n-1:
         dx = xx[i+1] - xx[i]
     else:
-        dx = 5e-8
+        dx = maxdx
     # До определённого момента (i < n-1) сетка посчитана с плавным
     # переходом на постоянный шаг.
     # Далее шаг всегда постоянный
@@ -265,6 +266,36 @@ while x <=L:
 
         visT[1,:] = den[1,:] * ka[1,:] / omega[1,:]
 
+        for jj in range(k):
+            if visT[1,jj] < 0:
+                Ures.write('******************')
+                Vres.write('******************')
+                kares.write('******************')
+                wres.write('******************')
+                gres.write('******************')
+                for jj in range(k):
+                    UU = U[1,jj]
+                    VV = V[1,jj]
+                    kaka = ka[1,jj]
+                    ww = omega[1,jj]
+                    gg = gamma[1,jj]
+                    Ures.write(str(UU))
+                    Ures.write(', ')
+                    Vres.write(str(VV))
+                    Vres.write(', ')
+                    kares.write(str(kaka))
+                    kares.write(', ')
+                    wres.write(str(ww))
+                    wres.write(', ')
+                    gres.write(str(gg))
+                    gres.write(', ')
+                Ures.write('\n')
+                Vres.write('\n')
+                kares.write('\n')
+                wres.write('\n')
+                gres.write('\n')
+                raise Exception('visT < 0')
+
         key1 = 0
         key1 = func.quality_chek(U, Uit, key1)
 
@@ -313,10 +344,10 @@ while x <=L:
     visT[0,:] = visT[1,:]
 
     end = time.time()
-
+ 
     # Вывод некоторых параметров в консоль
     # if i % 50 == 0:
-    print('|', 'step:', i, '; x:', round(x, 3), '; Re:', round(U[1,k-1] * x * den0 / vis0), '; mSPI:', round((end - start)*1000 / q), '; iter:', q, '; dx: ', dx, '; progress', round(x * 100 / L, 3), '% |')
+    print('|', 'step:', i, '; x:', round(x, 3), '; Re:', round(U[1,k-1] * x * den0 / vis0), '; mSPI:', round((end - start)*1000 / q), '; iter:', q, '; dx: ', dx, '; progress', round(x * 100 / L, 3), '; progress', '% |')
     
     if i % 5000 == 0:
         for jj in range(k):
@@ -342,7 +373,7 @@ while x <=L:
         gres.write('\n')
 
     Rex.append(U[1,k-1] * x * den0 / vis0)
-    Cf.append(vis0 * ((U[1,1] - U[1,0]) / (yy[1] - yy[0]))/(den0 * U[1,k-1] * U[1,k-1]))
+    Cf.append(vis0 * ((U[1,1] - U[1,0]) / (yy[1]))/(den0 * U[1,k-1] * U[1,k-1]))
     Cf_analit.append(0.332/np.sqrt(U[1,k-1] * x * den0 / vis0))
     Cf_analit_turb.append(0.0296 * (U[1,k-1] * x * den0 / vis0) ** (-0.2))
 
@@ -353,7 +384,7 @@ while x <=L:
 
             info = {
                 "Rex": (U[1,k-1] * x * den0 / vis0),
-                "Cf": (vis0 * ((U[1,1] - U[1,0]) / (yy[1] - yy[0]))/(den0 * U[1,k-1] * U[1,k-1])),
+                "Cf": (vis0 * ((U[1,1] - U[1,0]) / (yy[1]))/(den0 * U[1,k-1] * U[1,k-1])),
                 "Cf_analit": (0.332/np.sqrt(U[1,k-1] * x * den0 / vis0)),
                 "Cf_analit_turb": (0.0296 * (U[1,k-1] * x * den0 / vis0) ** (-0.2)),
             }
@@ -366,7 +397,7 @@ while x <=L:
 
             info = {
                 "Rex": (U[1,k-1] * x * den0 / vis0),
-                "Cf": (vis0 * ((U[1,1] - U[1,0]) / (yy[1] - yy[0]))/(den0 * U[1,k-1] * U[1,k-1])),
+                "Cf": (vis0 * ((U[1,1] - U[1,0]) / (yy[1]))/(den0 * U[1,k-1] * U[1,k-1])),
                 "Cf_analit": (0.332/np.sqrt(U[1,k-1] * x * den0 / vis0)),
                 "Cf_analit_turb": (0.0296 * (U[1,k-1] * x * den0 / vis0) ** (-0.2)),
             }

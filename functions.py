@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from numba import njit
 from tqdm import trange
 
-def GrdGen(L, h,
+def GrdGen(L, h, maxdx,
            n = 200, k = 600,
            a = 1, b = 1):
     sumX, sumY = 0, 0
@@ -17,33 +17,15 @@ def GrdGen(L, h,
     xx = np.zeros((n), float)
     yy = np.zeros((k), float)
     for ii in trange(1, n, desc='dx'):
-        if (a ** (ii - 2)) * dx <= 5e-8:
+        if (a ** (ii - 2)) * dx <= maxdx:
             xx[ii] = xx[ii-1] + (a ** (ii - 2)) * dx
-        elif (a ** (ii - 2)) * dx > 5e-8:
-            xx[ii] = xx[ii-1] + 5e-8
+        elif (a ** (ii - 2)) * dx > maxdx:
+            xx[ii] = xx[ii-1] + maxdx
     for ii in trange(1, k, desc='dy'):
         yy[ii] = yy[ii-1] + (b ** (ii - 2)) * dy
     return xx, yy
 
-def GrdGenSimpleY(L, h,
-           n = 200, k = 600,
-           a = 1, b = 1):
-    sumX = 0
-    for ii in range(n-2):
-        sumX += a ** ii
-    dx = L / sumX
-    xx = np.zeros((n), float)
-    yy = np.zeros((k), float)
-    for ii in trange(1, n, desc='dx'):
-        if (a ** (ii - 2)) * dx <= 1e-6:
-            xx[ii] = xx[ii-1] + (a ** (ii - 2)) * dx
-        elif (a ** (ii - 2)) * dx > 1e-6:
-            xx[ii] = xx[ii-1] + 1e-6
-    for ii in trange(1, k, desc='dy'):
-        yy[ii] = yy[ii-1] + 1e-4
-    return xx, yy
-
-@njit
+@njit(parallel=True)
 def quality_chek(X, X_it, key):
     accurasy = 1e-5 #1e-8
     for j in range(len(X_it)):
