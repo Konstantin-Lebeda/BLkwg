@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import math as mt
 import time
 import csv
+import json
 
 from numba import njit, jit
 from tqdm import trange
@@ -125,17 +126,7 @@ with open('data.csv', 'w') as csv_file:
     csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
     csv_writer.writeheader()
 
-Ures = open('res/U.txt', 'w')
-Vres = open('res/V.txt', 'w')
-kares = open('res/ka.txt', 'w')
-wres = open('res/w.txt', 'w')
-gres = open('res/g.txt', 'w')
-
-ypres = open('res/yp.txt', 'w')
-kapres = open('res/kap.txt', 'w')
-epspres = open('res/epsp.txt', 'w')
-
-while x <=L:
+while x <= L:
     if i < n-1:
         dx = xx[i+1] - xx[i]
     else:
@@ -268,32 +259,18 @@ while x <=L:
 
         for jj in range(k):
             if visT[1,jj] < 0:
-                Ures.write('******************')
-                Vres.write('******************')
-                kares.write('******************')
-                wres.write('******************')
-                gres.write('******************')
-                for jj in range(k):
-                    UU = U[1,jj]
-                    VV = V[1,jj]
-                    kaka = ka[1,jj]
-                    ww = omega[1,jj]
-                    gg = gamma[1,jj]
-                    Ures.write(str(UU))
-                    Ures.write(', ')
-                    Vres.write(str(VV))
-                    Vres.write(', ')
-                    kares.write(str(kaka))
-                    kares.write(', ')
-                    wres.write(str(ww))
-                    wres.write(', ')
-                    gres.write(str(gg))
-                    gres.write(', ')
-                Ures.write('\n')
-                Vres.write('\n')
-                kares.write('\n')
-                wres.write('\n')
-                gres.write('\n')
+                with open('U.txt', 'w') as fw:
+                    json.dump(U, fw)
+                with open('V.txt', 'w') as fw:
+                    json.dump(V, fw)
+                with open('ka.txt', 'w') as fw:
+                    json.dump(ka, fw)
+                with open('omega.txt', 'w') as fw:
+                    json.dump(omega, fw)
+                with open('gamma.txt', 'w') as fw:
+                    json.dump(gamma, fw)
+                with open('visT.txt', 'w') as fw:
+                    json.dump(visT, fw)
                 raise Exception('visT < 0')
 
         key1 = 0
@@ -347,30 +324,7 @@ while x <=L:
  
     # Вывод некоторых параметров в консоль
     # if i % 50 == 0:
-    print('|', 'step:', i, '; x:', round(x, 3), '; Re:', round(U[1,k-1] * x * den0 / vis0), '; mSPI:', round((end - start)*1000 / q), '; iter:', q, '; dx: ', dx, '; progress', round(x * 100 / L, 3), '; progress', '% |')
-    
-    if i % 5000 == 0:
-        for jj in range(k):
-            UU = U[1,jj]
-            VV = V[1,jj]
-            kaka = ka[1,jj]
-            ww = omega[1,jj]
-            gg = gamma[1,jj]
-            Ures.write(str(UU))
-            Ures.write(', ')
-            Vres.write(str(VV))
-            Vres.write(', ')
-            kares.write(str(kaka))
-            kares.write(', ')
-            wres.write(str(ww))
-            wres.write(', ')
-            gres.write(str(gg))
-            gres.write(', ')
-        Ures.write('\n')
-        Vres.write('\n')
-        kares.write('\n')
-        wres.write('\n')
-        gres.write('\n')
+    print('|', 'step:', i, '; x:', round(x, 3), '; Re:', round(U[1,k-1] * x * den0 / vis0), '; mSPI:', round((end - start)*1000 / q), '; iter:', q, '; dx: ', dx, '; progress', round(x * 100 / L, 3), '% |')
 
     Rex.append(U[1,k-1] * x * den0 / vis0)
     Cf.append(vis0 * ((U[1,1] - U[1,0]) / (yy[1]))/(den0 * U[1,k-1] * U[1,k-1]))
@@ -378,7 +332,7 @@ while x <=L:
     Cf_analit_turb.append(0.0296 * (U[1,k-1] * x * den0 / vis0) ** (-0.2))
 
     # Запись в файл параметров для мониторинга (script.py)
-    if i == 1:
+    if i == 1 or i % 100 == 0:
         with open('data.csv', 'a') as csv_file:
             csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
 
@@ -390,39 +344,3 @@ while x <=L:
             }
             
             csv_writer.writerow(info)
-
-    if i % 100 == 0:
-        with open('data.csv', 'a') as csv_file:
-            csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-
-            info = {
-                "Rex": (U[1,k-1] * x * den0 / vis0),
-                "Cf": (vis0 * ((U[1,1] - U[1,0]) / (yy[1]))/(den0 * U[1,k-1] * U[1,k-1])),
-                "Cf_analit": (0.332/np.sqrt(U[1,k-1] * x * den0 / vis0)),
-                "Cf_analit_turb": (0.0296 * (U[1,k-1] * x * den0 / vis0) ** (-0.2)),
-            }
-            
-            csv_writer.writerow(info)
-
-
-for jj in range(k):
-    UU = U[1,jj]
-    VV = V[1,jj]
-    kaka = ka[1,jj]
-    ww = omega[1,jj]
-    gg = gamma[1,jj]
-    Ures.write(str(UU))
-    Ures.write(', ')
-    Vres.write(str(VV))
-    Vres.write(', ')
-    kares.write(str(kaka))
-    kares.write(', ')
-    wres.write(str(ww))
-    wres.write(', ')
-    gres.write(str(gg))
-    gres.write(', ')
-Ures.write('\n')
-Vres.write('\n')
-kares.write('\n')
-wres.write('\n')
-gres.write('\n')
